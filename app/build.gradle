@@ -154,11 +154,17 @@ android {
 		}
 	}
 	applicationVariants.configureEach { variant ->
-		if (variant.name == 'nightly') {
+		if (variant.name == 'nightly' || variant.name == 'debug') {
 			variant.outputs.each { output ->
 				def now = LocalDateTime.now()
-				output.versionCodeOverride = now.format("yyMMdd").toInteger()
-				output.versionNameOverride = 'N' + now.format("yyyyMMdd")
+				if (variant.name == 'nightly') {
+					output.versionCodeOverride = now.format("yyMMdd").toInteger()
+					output.versionNameOverride = 'N' + now.format("yyyyMMdd")
+				} else {
+					// versionCode stays untouched so test builds can freely replace each
+					// other without downgrade-blocks; the date in versionName only identifies.
+					output.versionNameOverride = 'D' + now.format("yyyyMMdd")
+				}
 			}
 		}
 	}
