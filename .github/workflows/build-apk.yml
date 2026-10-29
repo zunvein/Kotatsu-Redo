@@ -35,3 +35,4 @@ jobs:
           name: KotatsuRedo-debug-apk
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 1
