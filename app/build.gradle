@@ -47,6 +47,7 @@ def readSecret = { String fileKey, String envKey ->
 def forkVersion = '9.9.0'
 def forkBuildDate = (project.findProperty('forkBuildDate') ?: LocalDateTime.now().format('yyyyMMdd')).toString()
 def forkVersionName = forkVersion
+def forkNightlyVersionName = "${forkVersion}-n${forkBuildDate}"
 def forkVersionCode = forkBuildDate.substring(2).toInteger() // yyMMdd, grows every day
 
 
@@ -207,7 +208,11 @@ android {
 		if (variant.name == 'nightly' || variant.name == 'release' || variant.name == 'debug') {
 			variant.outputs.each { output ->
 				def now = LocalDateTime.now()
-				if (variant.name == 'nightly' || variant.name == 'release') {
+				if (variant.name == 'nightly') {
+					// The -n<date> suffix marks test builds only, never releases.
+					output.versionCodeOverride = forkVersionCode
+					output.versionNameOverride = forkNightlyVersionName
+				} else if (variant.name == 'release') {
 					output.versionCodeOverride = forkVersionCode
 					output.versionNameOverride = forkVersionName
 				} else {
