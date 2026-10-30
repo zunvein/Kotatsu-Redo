@@ -33,15 +33,18 @@ def readSecret = { String fileKey, String envKey ->
 	return value
 }
 
-// Fork release identity. The CI workflow passes -PforkBuildDate (and may pass
-// -PforkVersion) so the release tag, the APK versionName and BuildConfig.VERSION_NAME
-// (which the in-app updater compares) are all derived from the exact same strings.
-// BuildConfig.VERSION_NAME follows defaultConfig.versionName - NOT the output
-// versionNameOverride - so the version lives in defaultConfig and the nightly
-// outputs are overridden with the very same value.
+// Fork release identity. The CI workflow passes -PforkBuildDate so the release
+// tag, the APK versionName and BuildConfig.VERSION_NAME (which the in-app updater
+// compares) are all derived from the same source. BuildConfig.VERSION_NAME follows
+// defaultConfig.versionName - NOT the output versionNameOverride - so the version
+// lives in defaultConfig and the nightly outputs are overridden with the same value.
+// versionCode stays date-based (yyMMdd): it only has to grow, users never see it.
+// The visible versionName is a clean semver - bump forkVersion for every release
+// (it is the single source of truth, the CI reads it from this file) so the
+// in-app updater, which compares versionName, offers the new build.
 def forkVersion = (project.findProperty('forkVersion') ?: '9.9.0').toString()
 def forkBuildDate = (project.findProperty('forkBuildDate') ?: LocalDateTime.now().format('yyyyMMdd')).toString()
-def forkVersionName = "${forkVersion}-n${forkBuildDate}"
+def forkVersionName = forkVersion
 def forkVersionCode = forkBuildDate.substring(2).toInteger() // yyMMdd, grows every day
 
 
