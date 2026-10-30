@@ -691,8 +691,10 @@ class CommunityApi @Inject constructor(
 	 * has to keep its code intact all the way to the string resource that explains it. Throwing a
 	 * bare `HTTP 422` here would lose exactly the part the user needs.
 	 */
-	private fun okhttp3.Response.requireBody(): String {
-		val text = body?.string().orEmpty()
+	private suspend fun okhttp3.Response.requireBody(): String {
+		// Read the body off the main thread: consuming a cached response writes to OkHttp's
+		// disk cache, and a main-thread read here is a StrictMode DiskWriteViolation.
+		val text = withContext(Dispatchers.IO) { body?.string().orEmpty() }
 		if (isSuccessful) return text
 		val parsed = runCatching { json.decodeFromString<ApiErrorDto>(text) }.getOrNull()
 		throw CommunityApiException(code, parsed ?: ApiErrorDto(error = "internal_error"))
