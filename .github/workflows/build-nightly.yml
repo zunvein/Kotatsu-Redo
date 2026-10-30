@@ -1,0 +1,39 @@
+name: Build nightly APK
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Daily at 01:30 WIB (18:30 UTC) - the test channel for upcoming features.
+    - cron: '30 18 * * *'
+
+concurrency:
+  group: apk-nightly
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Assemble signed nightly APK
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle (with cache)
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build signed nightly APK (minified)
+        run: ./gradlew assembleNightly --no-daemon --stacktrace
+
+      - name: Upload nightly APK artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: KotatsuRedo-nightly-apk
+          path: app/build/outputs/apk/nightly/*.apk
+          if-no-files-found: error
+          retention-days: 7

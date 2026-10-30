@@ -1,4 +1,4 @@
-name: Build & publish APK
+name: Build & publish release
 
 on:
   workflow_dispatch:
@@ -9,12 +9,12 @@ permissions:
   contents: write
 
 concurrency:
-  group: apk-build-${{ github.ref }}
+  group: apk-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build:
-    name: Assemble, sign and publish APKs
+    name: Assemble, sign and publish release APKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -32,19 +32,8 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build nightly APKs (test channel)
-        run: ./gradlew assembleNightly -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
-
-      - name: Build release APKs (stable channel)
+      - name: Build signed release APKs (minified, per-ABI + universal)
         run: ./gradlew assembleRelease -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
-
-      - name: Upload APK artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: KotatsuRedo-nightly-apk
-          path: app/build/outputs/apk/nightly/*.apk
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Publish to GitHub Releases
         env:
