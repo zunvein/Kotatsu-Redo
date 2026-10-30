@@ -96,8 +96,11 @@ class AppUpdateRepository @Inject constructor(
 
 	suspend fun isUpdateSupported(): Boolean {
 		// Personal fork (zunvein/Kotatsu-Redo): update checks query our own CI releases
-		// (github_updates_repo), never the upstream repositories.
-		return true
+		// (github_updates_repo), never the upstream repositories. Only the stable
+		// release build (clean applicationId) checks - test builds (.nightly / .debug)
+		// sit alongside it and the stable APK would not match their package name.
+		return !BuildConfig.APPLICATION_ID.endsWith(".nightly") &&
+			!BuildConfig.APPLICATION_ID.endsWith(".debug")
 	}
 
 	private inline fun JSONArray.find(predicate: (JSONObject) -> Boolean): JSONObject? {

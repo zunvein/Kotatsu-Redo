@@ -18,7 +18,8 @@ Changes compared to the official app (upstream Kotatsu-Redo):
 - **In-app update check** against this very repo: Settings → About → tap the version, or the badge shown when the app opens. The changelog is these release notes.
 - **Per-ABI APKs**: `arm64-v8a` (modern phones), `armeabi-v7a` (older devices), `universal` (works everywhere — used for in-app updates).
 - **Stable signing key** across builds → updates install cleanly over previous versions.
-- Can be **installed alongside the official Kotatsu app** (different applicationId: `.nightly`).
+- The release APK is the **stable app with the clean applicationId** — a drop-in replacement for the official/community app. If that one is installed, uninstall it first (our builds use a different signing key) and restore your data via Kotatsu's backup/restore.
+- A separate **nightly test build** (applicationId `.nightly`, shown as "Kotatsu Nightly") ships via CI artifacts for testing upcoming features and can sit alongside the stable app.
 
 ## Other
 

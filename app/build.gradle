@@ -126,6 +126,10 @@ android {
 			minifyEnabled true
 			shrinkResources true
 			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+			// Stable release channel: signed with the fork keystore and the CLEAN
+			// applicationId (defaultConfig, no suffix) - the drop-in replacement for
+			// the official app, same name/icon as upstream's own releases.
+			signingConfig signingConfigs.fork
 		}
 		nightly {
 			initWith release
@@ -200,10 +204,10 @@ android {
 		}
 	}
 	applicationVariants.configureEach { variant ->
-		if (variant.name == 'nightly' || variant.name == 'debug') {
+		if (variant.name == 'nightly' || variant.name == 'release' || variant.name == 'debug') {
 			variant.outputs.each { output ->
 				def now = LocalDateTime.now()
-				if (variant.name == 'nightly') {
+				if (variant.name == 'nightly' || variant.name == 'release') {
 					output.versionCodeOverride = forkVersionCode
 					output.versionNameOverride = forkVersionName
 				} else {
