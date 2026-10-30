@@ -15,6 +15,7 @@ import org.koitharu.kotatsu.core.model.chaptersCount
 import org.koitharu.kotatsu.core.model.parcelable.ParcelableManga
 import org.koitharu.kotatsu.core.parser.MangaDataRepository
 import org.koitharu.kotatsu.core.parser.MangaRepository
+import org.koitharu.kotatsu.core.util.ext.concat
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import java.util.concurrent.TimeUnit
@@ -35,11 +36,10 @@ class AutoFixUseCase @Inject constructor(
 		if (seed.isHealthy()) {
 			return seed to null // no fix required
 		}
-		val sourceScope = alternativesUseCase.getSourceScopeOptions(
-			ref = seed.source,
-			sameLanguageOnly = true,
-		).defaultScope
-		val replacement = alternativesUseCase(seed, sourceScope = sourceScope)
+		// Search enabled AND disabled sources, like the original Kotatsu fix did: the
+		// replacement often lives on a source the user never enabled.
+		val replacement = alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Enabled)
+			.concat(alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Disabled))
 			.filter { it.isHealthy() }
 			.runningFold<Manga, Manga?>(null) { best, candidate ->
 				if (best == null || best < candidate) {
