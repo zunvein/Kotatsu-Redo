@@ -18,6 +18,7 @@ import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.color.MaterialColors
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.serialization.json.Json
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.nav.router
@@ -38,6 +39,10 @@ import java.io.File
  * back to a degraded view that shows the error text itself, so a report problem
  * is always visible and copyable instead of being a silent crash.
  */
+// Required: report rows inflate CoverImageView (a @AndroidEntryPoint CoilImageView whose
+// members are Hilt-injected). Inflating it inside a non-Hilt activity crashes with an
+// InflateException ("Error inflating class <unknown>") — see round 15/16.
+@AndroidEntryPoint
 class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 
 	private lateinit var fullText: String
