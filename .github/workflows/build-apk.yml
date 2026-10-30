@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           # Single source of truth for the version: app/build.gradle (forkVersion).
-          FORK_VER="$(grep -oP "def forkVersion = '\K[^']+" app/build.gradle)"
+          FORK_VER="$(grep -oP "^def forkVersion = '\K[^']+" app/build.gradle)"
           [ -n "$FORK_VER" ] || { echo "failed to read forkVersion from app/build.gradle"; exit 1; }
           VER="v${FORK_VER}"
           mkdir -p release-apks

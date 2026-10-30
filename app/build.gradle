@@ -42,7 +42,9 @@ def readSecret = { String fileKey, String envKey ->
 // The visible versionName is a clean semver - bump forkVersion for every release
 // (it is the single source of truth, the CI reads it from this file) so the
 // in-app updater, which compares versionName, offers the new build.
-def forkVersion = (project.findProperty('forkVersion') ?: '9.9.0').toString()
+// Fork version - bumped for every release (the CI workflow greps this exact line
+// for the release tag, so keep it a plain quoted semver on its own line).
+def forkVersion = '9.9.0'
 def forkBuildDate = (project.findProperty('forkBuildDate') ?: LocalDateTime.now().format('yyyyMMdd')).toString()
 def forkVersionName = forkVersion
 def forkVersionCode = forkBuildDate.substring(2).toInteger() // yyMMdd, grows every day
