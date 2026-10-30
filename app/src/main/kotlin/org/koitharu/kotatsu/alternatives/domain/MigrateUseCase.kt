@@ -63,7 +63,13 @@ constructor(
 		}
 		Log.d(TAG, "Migration stage=load_target_details target=${newManga.debugRef()}")
 		val newDetails = if (newManga.chapters.isNullOrEmpty()) {
-			mangaRepositoryFactory.create(newManga.source).getDetails(newManga)
+			val result = runCatchingCancellable {
+				mangaRepositoryFactory.create(newManga.source).getDetails(newManga)
+			}
+			result.exceptionOrNull()?.let {
+				Log.w(TAG, "Could not load target details; using search-level manga: ${newManga.debugRef()}", it)
+			}
+			result.getOrDefault(newManga)
 		} else {
 			newManga
 		}

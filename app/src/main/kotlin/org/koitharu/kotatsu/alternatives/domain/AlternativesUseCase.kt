@@ -54,11 +54,12 @@ class AlternativesUseCase @Inject constructor(
 		sourceScope: AlternativeSourceScope,
 		query: String = manga.title,
 		loadDetails: Boolean = true,
+		sameLanguageOnly: Boolean = true,
 	): Flow<Manga> {
 		val sources = getCandidateSources(
 			ref = manga.source,
 			sourceScope = sourceScope,
-			sameLanguageOnly = true,
+			sameLanguageOnly = sameLanguageOnly,
 		)
 		return search(manga, sources, query, loadDetails)
 	}

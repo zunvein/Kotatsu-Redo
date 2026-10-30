@@ -11,7 +11,6 @@ import kotlinx.coroutines.flow.transformWhile
 import kotlinx.coroutines.flow.withIndex
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
-import org.koitharu.kotatsu.core.model.chaptersCount
 import org.koitharu.kotatsu.core.model.parcelable.ParcelableManga
 import org.koitharu.kotatsu.core.parser.MangaDataRepository
 import org.koitharu.kotatsu.core.parser.MangaRepository
@@ -42,24 +41,32 @@ class AutoFixUseCase @Inject constructor(
 		// to the alternative titles before searching.
 		val fallbackQuery: String = seed.altTitles.firstOrNull { it.isNotBlank() } ?: seed.title
 		val query: String = if (seed.title.contains("loading", ignoreCase = true)) fallbackQuery else seed.title
-		// Do NOT hard-require page-level health: sources behind webview/captcha checks
-		// always fail that probe in a background service, and many aggregator sources
-		// ship a working search with a broken details endpoint. Prefer candidates whose
-		// details (chapters) loaded, but fall back to the best-ranked search hit - the
-		// user can re-fix later if the picked source turns out dead too.
-		val acc = alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Enabled, query = query)
-			.concat(alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Disabled, query = query))
-			.runningFold(BestCandidates()) { current, candidate ->
-				val withChapters = if (candidate.chapters != null && (current.withChapters == null || current.withChapters < candidate)) candidate else current.withChapters
-				val first = current.first ?: candidate
-				BestCandidates(withChapters, first)
-			}.selectLastWithTimeout(4, 40, TimeUnit.SECONDS)
-		val replacement = acc?.withChapters ?: acc?.first ?: throw NoAlternativesException(ParcelableManga(seed))
-		migrateUseCase(seed, replacement)
-		return seed to replacement
+		// Search at the same level the manual alternatives screen does: no details probe,
+		// no language gate (a foreign-language replacement still beats a dead source),
+		// enabled and disabled sources alike, ranked best-first. Take the first hit fast,
+		// then enrich it with details opportunistically before migrating.
+		val first = alternativesUseCase(
+			seed,
+			sourceScope = AlternativeSourceScope.Enabled,
+			query = query,
+			loadDetails = false,
+			sameLanguageOnly = false,
+		).concat(
+			alternativesUseCase(
+				seed,
+				sourceScope = AlternativeSourceScope.Disabled,
+				query = query,
+				loadDetails = false,
+				sameLanguageOnly = false,
+			),
+		).selectLastWithTimeout(0, 40, TimeUnit.SECONDS)
+		val replacement = first ?: throw NoAlternativesException(ParcelableManga(seed))
+		val enriched = runCatchingCancellable {
+			mangaRepositoryFactory.create(replacement.source).getDetails(replacement)
+		}.getOrNull() ?: replacement
+		migrateUseCase(seed, enriched)
+		return seed to enriched
 	}
-
-	private data class BestCandidates(val withChapters: Manga? = null, val first: Manga? = null)
 
 	private suspend fun Manga.isHealthy(): Boolean = runCatchingCancellable {
 		val repo = mangaRepositoryFactory.create(source)
@@ -72,8 +79,6 @@ class AutoFixUseCase @Inject constructor(
 	private suspend fun Manga.getDetailsSafe() = runCatchingCancellable {
 		mangaRepositoryFactory.create(source).getDetails(this)
 	}.getOrDefault(this)
-
-	private operator fun Manga.compareTo(other: Manga) = chaptersCount().compareTo(other.chaptersCount())
 
 	@Suppress("UNCHECKED_CAST", "OPT_IN_USAGE")
 	private suspend fun <T> Flow<T>.selectLastWithTimeout(
