@@ -1,9 +1,12 @@
 <div align="center">
 
-**[Kotatsu-Redo](https://github.com/Kotatsu-Redo/Kotatsu-Redo) is a free and open-source manga reader for Android with built-in
-online content sources. The main goal of the fork is to make the best reading manga app.**
+**Kotatsu-Redo (zunvein's fork)** — a free and open-source manga reader for Android with built-in
+online content sources. This is [zunvein's fork](https://github.com/zunvein/Kotatsu-Redo) of
+[Kotatsu-Redo](https://github.com/Kotatsu-Redo/Kotatsu-Redo), a community fork of
+[Kotatsu](https://github.com/KotatsuApp/Kotatsu). This fork adds quality-of-life features such as
+the batch source Fix and publishes its own stable releases.
 
-![Android 6.0](https://img.shields.io/badge/android-6.0+-brightgreen) [![Discord](https://img.shields.io/discord/898363402467045416?color=5865f2&label=discord)](https://discord.gg/sfPJSQNxfW) [![License](https://img.shields.io/github/license/KotatsuApp/Kotatsu)](https://github.com/KotatsuApp/Kotatsu/blob/devel/LICENSE)
+![Android 6.0](https://img.shields.io/badge/android-6.0+-brightgreen) [![License](https://img.shields.io/github/license/KotatsuApp/Kotatsu)](https://github.com/zunvein/Kotatsu-Redo/blob/devel/LICENSE)
 
 ### Main Features
 

@@ -40,18 +40,4 @@
 		android:summary="@string/url_github"
 		android:title="@string/source_code" />
 
-	<Preference
-		android:icon="@drawable/ic_language"
-		android:key="about_app_translation"
-		android:persistent="false"
-		android:summary="@string/url_weblate"
-		android:title="@string/about_app_translation_summary" />
-
-	<Preference
-		android:icon="@drawable/ic_discord"
-		android:key="about_discord"
-		android:persistent="false"
-		android:summary="@string/url_discord"
-		android:title="@string/telegram_group" />
-
 </PreferenceScreen>
