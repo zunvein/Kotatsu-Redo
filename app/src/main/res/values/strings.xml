@@ -887,6 +887,7 @@ Optional — skip it and you appear as anon.</string>
     <string name="fix_report_share">Share</string>
     <string name="fix_report_copied">Report copied</string>
     <string name="fix_report_empty">No report available</string>
+    <string name="fix_report_render_error">Couldn\'t render the report</string>
     <string name="fix_report_header">Total: %1$d — fixed: %2$d, failed: %3$d, skipped: %4$d</string>
     <string name="fix_report_fixed">Fixed: %1$d</string>
     <string name="fix_report_failed">Failed: %1$d</string>

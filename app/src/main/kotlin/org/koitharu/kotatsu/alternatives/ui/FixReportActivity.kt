@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.isGone
@@ -32,34 +33,49 @@ import java.io.File
  * Shows the latest batch auto-fix report (written by [AutoFixService]):
  * covers, per-item status and the reason, tap a row to open the manga.
  * Copy/share keep the plain-text format for easy pasting back for debugging.
+ *
+ * This screen must never crash the app: every render step is guarded and falls
+ * back to a degraded view that shows the error text itself, so a report problem
+ * is always visible and copyable instead of being a silent crash.
  */
 class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 
 	private lateinit var fullText: String
+	private lateinit var adapter: ReportAdapter
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContentView(ActivityFixReportBinding.inflate(layoutInflater))
 		setDisplayHomeAsUp(true, showUpAsClose = false)
-		viewBinding.recyclerView.layoutManager = LinearLayoutManager(this)
-		val adapter = ReportAdapter { item -> onReportItemClick(item) }
-		viewBinding.recyclerView.adapter = adapter
+		adapter = ReportAdapter { item -> onReportItemClick(item) }
 		fullText = runCatching { File(cacheDir, REPORT_FILE).readText() }
 			.getOrElse { getString(R.string.fix_report_empty) }
-		val report = loadReport()
-		if (report.stamp.isNotBlank()) {
-			viewBinding.toolbar.subtitle = getString(R.string.fix_report_generated_at, report.stamp)
+		try {
+			viewBinding.recyclerView.layoutManager = LinearLayoutManager(this)
+			viewBinding.recyclerView.adapter = adapter
+			val report = loadReport()
+			if (report.stamp.isNotBlank()) {
+				viewBinding.toolbar.subtitle = getString(R.string.fix_report_generated_at, report.stamp)
+			}
+			adapter.submit(report.items)
+			bindSummary(report.items)
+			viewBinding.buttonCopy.setOnClickListener { copyReport() }
+			viewBinding.buttonShare.setOnClickListener { shareReport() }
+		} catch (t: Throwable) {
+			t.printStackTraceDebug()
+			showSetupError(t)
 		}
-		adapter.submit(report.items)
-		bindSummary(report.items)
-		viewBinding.buttonCopy.setOnClickListener { copyReport() }
-		viewBinding.buttonShare.setOnClickListener { shareReport() }
 	}
 
 	override fun onApplyWindowInsets(
 		v: View,
 		insets: WindowInsetsCompat,
 	): WindowInsetsCompat {
+		runCatching { applyWindowInsets(insets) }.onFailure { it.printStackTraceDebug() }
+		return insets.consumeAllSystemBarsInsets()
+	}
+
+	private fun applyWindowInsets(insets: WindowInsetsCompat) {
 		val barsInsets = insets.systemBarsInsets
 		viewBinding.root.updatePadding(top = barsInsets.top)
 		viewBinding.dockedToolbarChild.updateLayoutParams<MarginLayoutParams> {
@@ -76,7 +92,6 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 			left = barsInsets.left + pad,
 			right = barsInsets.right + pad,
 		)
-		return insets.consumeAllSystemBarsInsets()
 	}
 
 	private fun loadReport(): LoadedReport {
@@ -113,6 +128,23 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		viewBinding.textViewSkipped.text = getString(R.string.fix_report_skipped, skipped)
 	}
 
+	private fun showSetupError(t: Throwable) {
+		viewBinding.summaryContainer.isGone = true
+		adapter.submit(
+			listOf(
+				FixReportItem(
+					seedId = 0L,
+					title = getString(R.string.fix_report_render_error),
+					source = "",
+					sourceName = "",
+					coverUrl = null,
+					status = FixReportItem.Status.ERROR,
+					detail = describeThrowable(t),
+				),
+			),
+		)
+	}
+
 	private fun copyReport() {
 		val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
 		clipboard.setPrimaryClip(ClipData.newPlainText(getString(R.string.fix_report), fullText))
@@ -129,7 +161,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 	private fun onReportItemClick(item: FixReportItem) {
 		val id = if (item.newId != 0L) item.newId else item.seedId
 		if (id != 0L) {
-			router.openDetails(id)
+			runCatching { router.openDetails(id) }.onFailure { it.printStackTraceDebug() }
 		}
 	}
 
@@ -151,49 +183,71 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		}
 
 		override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-			val binding = ItemFixReportBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-			if (colorFixed == 0) {
-				colorFixed = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
-				colorFailed = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorError)
-				colorNeutral = MaterialColors.getColor(binding.root, android.R.attr.textColorSecondary)
+			val binding = runCatching {
+				ItemFixReportBinding.inflate(LayoutInflater.from(parent.context), parent, false)
+			}.getOrElse { t ->
+				t.printStackTraceDebug()
+				val fallback = TextView(parent.context)
+				fallback.text = parent.context.getString(R.string.fix_report_render_error) +
+					" — " + describeThrowable(t)
+				return Holder(fallback, null)
 			}
-			return Holder(binding)
+			if (colorFixed == 0) {
+				colorFixed = resolveColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
+				colorFailed = resolveColor(binding.root, androidx.appcompat.R.attr.colorError)
+				colorNeutral = resolveColor(binding.root, android.R.attr.textColorSecondary)
+			}
+			return Holder(binding.root, binding)
 		}
 
 		override fun getItemCount(): Int = items.size
 
 		override fun onBindViewHolder(holder: Holder, position: Int) {
+			val binding = holder.binding ?: return // degraded row, error already shown
 			val item = items[position]
-			with(holder.binding) {
-				textViewTitle.text = item.title.ifBlank {
-					root.context.getString(R.string.fix_report_empty)
+			runCatching {
+				with(binding) {
+					textViewTitle.text = item.title.ifBlank {
+						root.context.getString(R.string.fix_report_empty)
+					}
+					textViewStatus.text = when (item.status) {
+						FixReportItem.Status.FIXED -> root.context.getString(R.string.fix_status_fixed)
+						FixReportItem.Status.NO_FIX_REQUIRED -> root.context.getString(R.string.fix_status_skipped)
+						FixReportItem.Status.NO_ALTERNATIVES -> root.context.getString(R.string.fix_status_failed)
+						FixReportItem.Status.ERROR -> root.context.getString(R.string.fix_status_error)
+					}
+					resolveStatusColor(item.status)?.let(textViewStatus::setTextColor)
+					textViewDetail.text = item.detail
+					textViewDetail.isGone = item.detail.isBlank()
+					imageViewCover.setImageAsync(
+						item.newCoverUrl ?: item.coverUrl,
+						null,
+					)
+					root.setOnClickListener {
+						onItemClickListener(item)
+					}
 				}
-				textViewStatus.text = when (item.status) {
-					FixReportItem.Status.FIXED -> root.context.getString(R.string.fix_status_fixed)
-					FixReportItem.Status.NO_FIX_REQUIRED -> root.context.getString(R.string.fix_status_skipped)
-					FixReportItem.Status.NO_ALTERNATIVES -> root.context.getString(R.string.fix_status_failed)
-					FixReportItem.Status.ERROR -> root.context.getString(R.string.fix_status_error)
+			}.getOrElse { t ->
+				t.printStackTraceDebug()
+				binding.textViewTitle.text = item.title.ifBlank {
+					binding.root.context.getString(R.string.fix_report_empty)
 				}
-				textViewStatus.setTextColor(
-					when (item.status) {
-						FixReportItem.Status.FIXED -> colorFixed
-						FixReportItem.Status.NO_FIX_REQUIRED -> colorNeutral
-						FixReportItem.Status.NO_ALTERNATIVES, FixReportItem.Status.ERROR -> colorFailed
-					},
-				)
-				textViewDetail.text = item.detail
-				textViewDetail.isGone = item.detail.isBlank()
-				imageViewCover.setImageAsync(
-					item.newCoverUrl ?: item.coverUrl,
-					null,
-				)
-				root.setOnClickListener {
-					onItemClickListener(item)
-				}
+				binding.textViewDetail.text = describeThrowable(t)
+				binding.textViewDetail.isGone = false
 			}
 		}
 
-		class Holder(val binding: ItemFixReportBinding) : RecyclerView.ViewHolder(binding.root)
+		private fun resolveColor(view: View, attr: Int): Int = runCatching {
+			MaterialColors.getColor(view, attr)
+		}.getOrDefault(-1)
+
+		private fun resolveStatusColor(status: FixReportItem.Status): Int? = when (status) {
+			FixReportItem.Status.FIXED -> colorFixed
+			FixReportItem.Status.NO_FIX_REQUIRED -> colorNeutral
+			FixReportItem.Status.NO_ALTERNATIVES, FixReportItem.Status.ERROR -> colorFailed
+		}.takeIf { it != -1 }
+
+		class Holder(val root: View, val binding: ItemFixReportBinding?) : RecyclerView.ViewHolder(root)
 	}
 
 	companion object {
@@ -209,6 +263,9 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		// FAIL "title" (source) — reason
 		private val LINE_REGEX =
 			Regex("""^(FIXED|SKIP|FAIL)\s+"(.*?)"\s+\(([^)]*)\)(?:\s+->\s+"(.*)")?(?:\s+—\s+(.*))?$""")
+
+		private fun describeThrowable(t: Throwable): String =
+			t.javaClass.simpleName + (t.message?.let { ": $it" } ?: "")
 
 		private fun parseTextReport(text: String): ArrayList<FixReportItem> {
 			val items = ArrayList<FixReportItem>()
