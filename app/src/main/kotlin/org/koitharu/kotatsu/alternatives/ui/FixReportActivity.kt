@@ -36,7 +36,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContentView(ActivityFixReportBinding.inflate(layoutInflater))
-		setDisplayHomeAsUpEnabled(true, showUpAsClose = false)
+		setDisplayHomeAsUp(true, showUpAsClose = false)
 		viewBinding.recyclerView.layoutManager = LinearLayoutManager(this)
 		val adapter = ReportAdapter()
 		viewBinding.recyclerView.adapter = adapter
@@ -122,7 +122,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
 			val binding = ItemFixReportBinding.inflate(LayoutInflater.from(parent.context), parent, false)
 			if (colorFixed == 0) {
-				colorFixed = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
+				colorFixed = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorPrimary)
 				colorFailed = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorError)
 				colorNeutral = MaterialColors.getColor(binding.root, android.R.attr.textColorSecondary)
 			}
@@ -161,7 +161,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		class Holder(val binding: ItemFixReportBinding) : RecyclerView.ViewHolder(binding.root)
 	}
 
-	private companion object {
+	companion object {
 
 		const val REPORT_FILE = "autofix-report.txt"
 
