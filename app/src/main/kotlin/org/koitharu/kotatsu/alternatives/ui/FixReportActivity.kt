@@ -123,7 +123,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 			val binding = ItemFixReportBinding.inflate(LayoutInflater.from(parent.context), parent, false)
 			if (colorFixed == 0) {
 				colorFixed = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorPrimary)
-				colorFailed = MaterialColors.getColor(binding.root, com.google.android.material.R.attr.colorError)
+				colorFailed = MaterialColors.getColor(binding.root, androidx.appcompat.R.attr.colorError)
 				colorNeutral = MaterialColors.getColor(binding.root, android.R.attr.textColorSecondary)
 			}
 			return Holder(binding)
