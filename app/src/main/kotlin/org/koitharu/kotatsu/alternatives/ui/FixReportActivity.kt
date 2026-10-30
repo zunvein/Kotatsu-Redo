@@ -22,6 +22,7 @@ import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.nav.router
 import org.koitharu.kotatsu.core.ui.BaseActivity
 import org.koitharu.kotatsu.core.util.ext.consumeAllSystemBarsInsets
+import org.koitharu.kotatsu.core.util.ext.printStackTraceDebug
 import org.koitharu.kotatsu.core.util.ext.systemBarsInsets
 import org.koitharu.kotatsu.databinding.ActivityFixReportBinding
 import org.koitharu.kotatsu.databinding.ItemFixReportBinding
@@ -195,7 +196,7 @@ class FixReportActivity : BaseActivity<ActivityFixReportBinding>() {
 		class Holder(val binding: ItemFixReportBinding) : RecyclerView.ViewHolder(binding.root)
 	}
 
-	private companion object {
+	companion object {
 
 		const val REPORT_FILE = "autofix-report.txt"
 		const val REPORT_JSON_FILE = "autofix-report.json"
