@@ -381,6 +381,9 @@
 			android:name="org.koitharu.kotatsu.alternatives.ui.AutoFixService"
 			android:foregroundServiceType="dataSync"
 			android:label="@string/fixing_manga" />
+		<activity
+			android:name="org.koitharu.kotatsu.alternatives.ui.FixReportActivity"
+			android:label="@string/fix_report" />
 		<service
 			android:name="org.koitharu.kotatsu.local.ui.LocalIndexUpdateService"
 			android:label="@string/local_manga_processing" />

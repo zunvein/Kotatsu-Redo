@@ -880,6 +880,14 @@ Optional — skip it and you appear as anon.</string>
     <string name="no_fix_required">No fix required for \"%s\"</string>
     <string name="no_alternatives_found">No alternatives found for \"%s\"</string>
     <string name="manga_fix_prompt">This function will find alternative sources for the selected manga. The task will take some time and will proceed in the background</string>
+    <string name="fix_completed">Auto-fix finished</string>
+    <string name="fix_summary">Fixed: %1$d, failed: %2$d, skipped: %3$d. Tap to see the report.</string>
+    <string name="fix_report">Fix report</string>
+    <string name="fix_report_copy">Copy</string>
+    <string name="fix_report_share">Share</string>
+    <string name="fix_report_copied">Report copied</string>
+    <string name="fix_report_empty">No report available</string>
+    <string name="fix_report_header">Total: %1$d — fixed: %2$d, failed: %3$d, skipped: %4$d</string>
     <string name="content_type_novel">Novel</string>
     <string name="content_type_manhua">Manhua</string>
     <string name="content_type_manhwa">Manhwa</string>
