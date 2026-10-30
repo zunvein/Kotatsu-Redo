@@ -53,8 +53,8 @@ class AutoFixService : CoroutineIntentService() {
 
 	override suspend fun IntentJobContext.processIntent(intent: Intent) {
 		val ids = requireNotNull(intent.getLongArrayExtra(DATA_IDS))
-		startForeground(this)
-		for (mangaId in ids) {
+		startForeground(this, ids.size)
+		for ((index, mangaId) in ids.withIndex()) {
 			powerManager.withPartialWakeLock(TAG) {
 				val result = runCatchingCancellable {
 					autoFixUseCase.invoke(mangaId)
@@ -63,6 +63,13 @@ class AutoFixService : CoroutineIntentService() {
 					val notification = buildNotification(startId, result)
 					notificationManager.notify(TAG, startId, notification)
 				}
+			}
+			// Live k/N progress on the foreground notification instead of an endless spinner.
+			if (checkNotificationPermission(CHANNEL_ID)) {
+				notificationManager.notify(
+					FOREGROUND_NOTIFICATION_ID,
+					buildForegroundNotification(this, index + 1, ids.size),
+				)
 			}
 		}
 	}
@@ -75,7 +82,7 @@ class AutoFixService : CoroutineIntentService() {
 	}
 
 	@SuppressLint("InlinedApi")
-	private fun startForeground(jobContext: IntentJobContext) {
+	private fun startForeground(jobContext: IntentJobContext, total: Int) {
 		val title = getString(R.string.fixing_manga)
 		val channel = NotificationChannelCompat.Builder(CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_MIN)
 			.setName(title)
@@ -86,13 +93,22 @@ class AutoFixService : CoroutineIntentService() {
 			.build()
 		notificationManager.createNotificationChannel(channel)
 
-		val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-			.setContentTitle(title)
+		jobContext.setForeground(
+			FOREGROUND_NOTIFICATION_ID,
+			buildForegroundNotification(jobContext, 0, total),
+			ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
+		)
+	}
+
+	private fun buildForegroundNotification(jobContext: IntentJobContext, current: Int, total: Int): Notification {
+		return NotificationCompat.Builder(this, CHANNEL_ID)
+			.setContentTitle(getString(R.string.fixing_manga))
+			.setContentText(if (total > 1) "$current / $total" else null)
 			.setPriority(NotificationCompat.PRIORITY_MIN)
 			.setDefaults(0)
 			.setSilent(true)
 			.setOngoing(true)
-			.setProgress(0, 0, true)
+			.setProgress(total, current, false)
 			.setSmallIcon(R.drawable.ic_stat_auto_fix)
 			.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 			.setCategory(NotificationCompat.CATEGORY_PROGRESS)
@@ -102,12 +118,6 @@ class AutoFixService : CoroutineIntentService() {
 				jobContext.getCancelIntent(),
 			)
 			.build()
-
-		jobContext.setForeground(
-			FOREGROUND_NOTIFICATION_ID,
-			notification,
-			ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-		)
 	}
 
 	private suspend fun buildNotification(startId: Int, result: Result<Pair<Manga, Manga?>>): Notification {
