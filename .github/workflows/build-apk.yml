@@ -32,8 +32,11 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build signed APKs (release for publishing + nightly for testing)
-        run: ./gradlew assembleNightly assembleRelease -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
+      - name: Build nightly APKs (test channel)
+        run: ./gradlew assembleNightly -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
+
+      - name: Build release APKs (stable channel)
+        run: ./gradlew assembleRelease -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
