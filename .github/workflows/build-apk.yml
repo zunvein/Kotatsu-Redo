@@ -1,9 +1,12 @@
-name: Build nightly APK
+name: Build & publish APK
 
 on:
   workflow_dispatch:
   push:
     branches: [ devel ]
+
+permissions:
+  contents: write
 
 concurrency:
   group: apk-build-${{ github.ref }}
@@ -11,11 +14,14 @@ concurrency:
 
 jobs:
   build:
-    name: Assemble signed nightly APK
+    name: Assemble, sign and publish APKs
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Compute build date
+        run: echo "FORK_DATE=$(date -u +%Y%m%d)" >> "$GITHUB_ENV"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v6
@@ -26,8 +32,8 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build signed nightly APK (minified)
-        run: ./gradlew assembleNightly --no-daemon --stacktrace
+      - name: Build signed APKs (minified, per-ABI + universal)
+        run: ./gradlew assembleNightly -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
@@ -36,3 +42,30 @@ jobs:
           path: app/build/outputs/apk/nightly/*.apk
           if-no-files-found: error
           retention-days: 1
+
+      - name: Publish to GitHub Releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Keep the version number in sync with the forkVersion fallback in app/build.gradle.
+          VER="9.9.0-n${FORK_DATE}"
+          mkdir -p release-apks
+          for f in app/build/outputs/apk/nightly/*.apk; do
+            case "$f" in
+              *arm64-v8a*) abi="arm64-v8a" ;;
+              *armeabi-v7a*) abi="armeabi-v7a" ;;
+              *) abi="universal" ;;
+            esac
+            cp "$f" "release-apks/KotatsuRedo-${VER}-${abi}.apk"
+          done
+          {
+            cat RELEASE_NOTES.md
+            echo
+            echo '---'
+            echo "**Which APK?** \`arm64-v8a\` for modern phones, \`armeabi-v7a\` for older devices, \`universal\` works everywhere. In-app updates download the universal APK."
+          } > release-notes.md
+          if gh release view "$VER" >/dev/null 2>&1; then
+            gh release delete "$VER" --yes --cleanup-tag
+          fi
+          gh release create "$VER" release-apks/*.apk --title "$VER" --notes-file release-notes.md --latest
