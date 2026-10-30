@@ -18,6 +18,7 @@ import coil3.ImageLoader
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import org.koitharu.kotatsu.R
+import org.koitharu.kotatsu.alternatives.ui.AutoFixService
 import org.koitharu.kotatsu.core.exceptions.resolve.ExceptionResolver
 import org.koitharu.kotatsu.core.exceptions.resolve.SnackbarErrorObserver
 import org.koitharu.kotatsu.core.model.isLocal
@@ -25,6 +26,7 @@ import org.koitharu.kotatsu.core.nav.router
 import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.prefs.ListMode
 import org.koitharu.kotatsu.core.ui.BaseFragment
+import org.koitharu.kotatsu.core.ui.dialog.buildAlertDialog
 import org.koitharu.kotatsu.core.ui.list.FitHeightGridLayoutManager
 import org.koitharu.kotatsu.core.ui.list.FitHeightLinearLayoutManager
 import org.koitharu.kotatsu.core.ui.list.ListSelectionController
@@ -278,6 +280,7 @@ abstract class MangaListFragment :
 		val isSingleSelection = controller.count == 1
 		menu.findItem(R.id.action_save)?.isVisible = hasNoLocal
 		menu.findItem(R.id.action_replace_source)?.isVisible = hasNoLocal && hasSingleSource
+		menu.findItem(R.id.action_fix)?.isVisible = hasNoLocal
 		menu.findItem(R.id.action_edit_override)?.isVisible = isSingleSelection
 		return super.onPrepareActionMode(controller, mode, menu)
 	}
@@ -327,6 +330,22 @@ abstract class MangaListFragment :
 			R.id.action_replace_source -> {
 				router.openSourceReplacement(selectedItems.toList())
 				mode?.finish()
+				true
+			}
+
+			R.id.action_fix -> {
+				val itemsSnapshot = selectedItemsIds
+				val ctx = context ?: return false
+				buildAlertDialog(ctx, isCentered = true) {
+					setTitle(item.title)
+					setIcon(item.icon)
+					setMessage(R.string.manga_fix_prompt)
+					setNegativeButton(android.R.string.cancel, null)
+					setPositiveButton(R.string.fix) { _, _ ->
+						AutoFixService.start(ctx, itemsSnapshot)
+						mode?.finish()
+					}
+				}.show()
 				true
 			}
 
