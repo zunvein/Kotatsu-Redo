@@ -54,7 +54,13 @@ class AppUpdateRepository @Inject constructor(
 			.url(releasesUrl)
 		val jsonArray = okHttp.newCall(request.build()).await().parseJsonArray()
 		return jsonArray.mapJSONNotNull { json ->
-			val asset = json.optJSONArray("assets")?.find { jo ->
+			// Releases carry one APK per ABI plus a universal one; the in-app update
+			// flow must download the universal file so it works on any device.
+			val assets = json.optJSONArray("assets")
+			val asset = assets?.find { jo ->
+				jo.optString("content_type") == CONTENT_TYPE_APK &&
+					jo.optString("name").contains("universal", ignoreCase = true)
+			} ?: assets?.find { jo ->
 				jo.optString("content_type") == CONTENT_TYPE_APK
 			} ?: return@mapJSONNotNull null
 			AppVersion(
@@ -88,11 +94,10 @@ class AppUpdateRepository @Inject constructor(
 		}.getOrNull()
 	}
 
-	@Suppress("KotlinConstantConditions")
 	suspend fun isUpdateSupported(): Boolean {
-		// Personal fork (zunvein/Kotatsu-Redo): never query the upstream repository for
-		// updates - builds come from our own CI, so the in-app update badge stays off.
-		return false
+		// Personal fork (zunvein/Kotatsu-Redo): update checks query our own CI releases
+		// (github_updates_repo), never the upstream repositories.
+		return true
 	}
 
 	private inline fun JSONArray.find(predicate: (JSONObject) -> Boolean): JSONObject? {
