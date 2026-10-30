@@ -33,6 +33,17 @@ def readSecret = { String fileKey, String envKey ->
 	return value
 }
 
+// Fork release identity. The CI workflow passes -PforkBuildDate (and may pass
+// -PforkVersion) so the release tag, the APK versionName and BuildConfig.VERSION_NAME
+// (which the in-app updater compares) are all derived from the exact same strings.
+// BuildConfig.VERSION_NAME follows defaultConfig.versionName - NOT the output
+// versionNameOverride - so the version lives in defaultConfig and the nightly
+// outputs are overridden with the very same value.
+def forkVersion = (project.findProperty('forkVersion') ?: '9.9.0').toString()
+def forkBuildDate = (project.findProperty('forkBuildDate') ?: LocalDateTime.now().format('yyyyMMdd')).toString()
+def forkVersionName = "${forkVersion}-n${forkBuildDate}"
+def forkVersionCode = forkBuildDate.substring(2).toInteger() // yyMMdd, grows every day
+
 
 android {
 	compileSdk = 37
@@ -51,7 +62,10 @@ android {
 		minSdk = 23
 		targetSdk = 37
 		versionCode = 2047
-        versionName = '9.8.5'
+        // Fork version scheme "<forkVersion>-n<date>". defaultConfig (not the output
+        // override) is what BuildConfig.VERSION_NAME sees, and the in-app updater
+        // compares exactly that - so it must equal the nightly versionNameOverride.
+        versionName = forkVersionName
 		generatedDensities = []
 		ndk {
 			// ARM only. x86 and x86_64 devices - Intel Chromebooks, emulators, BlueStacks - run these
@@ -117,6 +131,16 @@ android {
 			signingConfig signingConfigs.fork
 		}
 	}
+	splits {
+		// One APK per ABI plus a universal one, so GitHub releases can offer each
+		// device a smaller download. abiFilters above already limits native libs to ARM.
+		abi {
+			enable true
+			reset()
+			include 'arm64-v8a', 'armeabi-v7a'
+			universalApk true
+		}
+	}
 	buildFeatures {
 		viewBinding true
 		buildConfig true
@@ -175,8 +199,8 @@ android {
 			variant.outputs.each { output ->
 				def now = LocalDateTime.now()
 				if (variant.name == 'nightly') {
-					output.versionCodeOverride = now.format("yyMMdd").toInteger()
-					output.versionNameOverride = 'N' + now.format("yyyyMMdd")
+					output.versionCodeOverride = forkVersionCode
+					output.versionNameOverride = forkVersionName
 				} else {
 					// versionCode stays untouched so test builds can freely replace each
 					// other without downgrade-blocks; the date in versionName only identifies.
