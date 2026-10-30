@@ -1,4 +1,4 @@
-name: Build debug APK
+name: Build nightly APK
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ concurrency:
 
 jobs:
   build:
-    name: Assemble debug APK
+    name: Assemble signed nightly APK
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,13 +26,13 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Build signed nightly APK (minified)
+        run: ./gradlew assembleNightly --no-daemon --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: KotatsuRedo-debug-apk
-          path: app/build/outputs/apk/debug/*.apk
+          name: KotatsuRedo-nightly-apk
+          path: app/build/outputs/apk/nightly/*.apk
           if-no-files-found: error
           retention-days: 1

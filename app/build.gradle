@@ -86,6 +86,19 @@ android {
 		manifestPlaceholders = [appLinkHost: appLinkHost]
 		buildConfigField 'String', 'APP_LINK_HOST', "\"${appLinkHost}\""
 	}
+	signingConfigs {
+		fork {
+			// Throwaway signing key for this personal fork's installable test builds.
+			// The keystore + password are committed on purpose: builds must keep the same
+			// signature forever so updates install over previous ones. It signs nothing
+			// but this fork's own nightly APK - never use it anywhere else.
+			storeFile rootProject.file('fork-release.keystore')
+			storePassword 'yUIgsCxiByNaKg8X5Af-'
+			keyAlias 'fork'
+			keyPassword 'yUIgsCxiByNaKg8X5Af-'
+			storeType 'PKCS12'
+		}
+	}
 	buildTypes {
 		debug {
 			applicationIdSuffix = '.debug'
@@ -98,6 +111,7 @@ android {
 		nightly {
 			initWith release
 			applicationIdSuffix = '.nightly'
+			signingConfig signingConfigs.fork
 		}
 	}
 	buildFeatures {
