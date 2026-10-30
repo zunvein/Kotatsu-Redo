@@ -55,13 +55,15 @@ class AlternativesUseCase @Inject constructor(
 		query: String = manga.title,
 		loadDetails: Boolean = true,
 		sameLanguageOnly: Boolean = true,
+		ignoreNsfwFilter: Boolean = false,
 	): Flow<Manga> {
 		val sources = getCandidateSources(
 			ref = manga.source,
 			sourceScope = sourceScope,
 			sameLanguageOnly = sameLanguageOnly,
+			ignoreNsfwFilter = ignoreNsfwFilter,
 		)
-		return search(manga, sources, query, loadDetails)
+		return search(manga, sources, query, loadDetails, ignoreNsfwFilter = ignoreNsfwFilter)
 	}
 
 	/**
@@ -129,6 +131,7 @@ class AlternativesUseCase @Inject constructor(
 		sourceScope: AlternativeSourceScope,
 		sameLanguageOnly: Boolean = true,
 		sameContentTypeOnly: Boolean = false,
+		ignoreNsfwFilter: Boolean = false,
 	): List<MangaSource> {
 		val sources = when (sourceScope) {
 			is AlternativeSourceScope.Preset -> presetsRepository.getById(sourceScope.id)
@@ -141,7 +144,7 @@ class AlternativesUseCase @Inject constructor(
 		val candidates = sources.asSequence()
 			.distinctBy(MangaSource::name)
 			.filter { it.name != ref.name }
-			.filterNot { settings.isNsfwContentDisabled && it.isNsfw() }
+			.filterNot { !ignoreNsfwFilter && settings.isNsfwContentDisabled && it.isNsfw() }
 			.filter { !sameLanguageOnly || it.hasSameLanguageAs(ref) }
 			.filter { !sameContentTypeOnly || it.hasSameContentTypeAs(ref) }
 			.toList()
@@ -213,6 +216,7 @@ class AlternativesUseCase @Inject constructor(
 		query: String,
 		loadDetails: Boolean,
 		onSourceFailure: (MangaSource) -> Unit = {},
+		ignoreNsfwFilter: Boolean = false,
 	): Flow<Manga> {
 		if (sources.isEmpty()) {
 			return emptyFlow()
@@ -223,7 +227,7 @@ class AlternativesUseCase @Inject constructor(
 					val searchHelper = searchHelperFactory.create(source)
 					val searchResult = runCatchingCancellable {
 						withSourcePermit(source) {
-							searchHelper(query, SearchKind.TITLE)?.manga
+							searchHelper(query, SearchKind.TITLE, ignoreNsfwFilter)?.manga
 						}
 					}
 					searchResult.exceptionOrNull()?.let { error ->

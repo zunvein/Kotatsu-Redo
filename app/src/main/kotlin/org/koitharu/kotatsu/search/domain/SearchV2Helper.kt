@@ -29,8 +29,8 @@ class SearchV2Helper @AssistedInject constructor(
 	private val probeRecorder: SourceProbeRecorder,
 ) {
 
-	suspend operator fun invoke(query: String, kind: SearchKind): SearchResults? {
-		if (settings.isNsfwContentDisabled && source.isNsfw()) {
+	suspend operator fun invoke(query: String, kind: SearchKind, ignoreNsfwFilter: Boolean = false): SearchResults? {
+		if (!ignoreNsfwFilter && settings.isNsfwContentDisabled && source.isNsfw()) {
 			return null
 		}
 		val repository = mangaRepositoryFactory.create(source)

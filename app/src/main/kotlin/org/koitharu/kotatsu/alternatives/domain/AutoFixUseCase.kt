@@ -35,31 +35,40 @@ class AutoFixUseCase @Inject constructor(
 		if (seed.isHealthy()) {
 			return seed to null // no fix required
 		}
-		// Search enabled AND disabled sources, like the original Kotatsu fix did: the
-		// replacement often lives on a source the user never enabled. A half-dead source
-		// can also leave a placeholder title ("Loading…") in the database, so fall back
-		// to the alternative titles before searching.
-		val fallbackQuery: String = seed.altTitles.firstOrNull { it.isNotBlank() } ?: seed.title
-		val query: String = if (seed.title.contains("loading", ignoreCase = true)) fallbackQuery else seed.title
-		// Search at the same level the manual alternatives screen does: no details probe,
-		// no language gate (a foreign-language replacement still beats a dead source),
-		// enabled and disabled sources alike, ranked best-first. Take the first hit fast,
-		// then enrich it with details opportunistically before migrating.
-		val first = alternativesUseCase(
+		// Candidate queries: the stored title, unless it is a broken placeholder
+		// ("Loading..."), in which case the alternative titles lead. A title search that
+		// finds nothing gets one retry per alternative title - short or source-specific
+		// names ("Overgeared New") often only match under another title.
+		// The NSFW content filter is ignored here on purpose: a dead entry is worse than
+		// a hit on an adult-flagged source, and the alternatives often live there.
+		val altTitle = seed.altTitles.firstOrNull { it.isNotBlank() }
+		val primaryTitle = if (seed.title.contains("loading", ignoreCase = true)) altTitle ?: seed.title else seed.title
+		val queries = buildList {
+			add(primaryTitle)
+			if (altTitle != null && altTitle != primaryTitle) add(altTitle)
+		}.distinct()
+		suspend fun searchFirst(q: String, timeoutSec: Long): Manga? = alternativesUseCase(
 			seed,
 			sourceScope = AlternativeSourceScope.Enabled,
-			query = query,
+			query = q,
 			loadDetails = false,
 			sameLanguageOnly = false,
+			ignoreNsfwFilter = true,
 		).concat(
 			alternativesUseCase(
 				seed,
 				sourceScope = AlternativeSourceScope.Disabled,
-				query = query,
+				query = q,
 				loadDetails = false,
 				sameLanguageOnly = false,
+				ignoreNsfwFilter = true,
 			),
-		).selectLastWithTimeout(0, 40, TimeUnit.SECONDS)
+		).selectLastWithTimeout(0, timeoutSec, TimeUnit.SECONDS)
+		var first: Manga? = null
+		for ((i, q) in queries.withIndex()) {
+			first = searchFirst(q, if (i == 0) 90L else 30L)
+			if (first != null) break
+		}
 		val replacement = first ?: throw NoAlternativesException(ParcelableManga(seed))
 		val enriched = runCatchingCancellable {
 			mangaRepositoryFactory.create(replacement.source).getDetails(replacement)
