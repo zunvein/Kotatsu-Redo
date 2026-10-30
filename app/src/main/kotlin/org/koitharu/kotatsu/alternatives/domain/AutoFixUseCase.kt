@@ -40,11 +40,8 @@ class AutoFixUseCase @Inject constructor(
 		// replacement often lives on a source the user never enabled. A half-dead source
 		// can also leave a placeholder title ("Loading…") in the database, so fall back
 		// to the alternative titles before searching.
-		val query = when {
-			!seed.title.contains("loading", ignoreCase = true) -> seed.title
-			!seed.altTitle.isNullOrBlank() -> seed.altTitle
-			else -> seed.title
-		}
+		val fallbackQuery: String = seed.altTitles.firstOrNull { it.isNotBlank() } ?: seed.title
+		val query: String = if (seed.title.contains("loading", ignoreCase = true)) fallbackQuery else seed.title
 		// Page-level health (pages + page URL) is too strict for sources behind webview
 		// checks; prefer fully healthy candidates but accept any whose details loaded
 		// with chapters - a candidate that turns out dead can be re-fixed later.
