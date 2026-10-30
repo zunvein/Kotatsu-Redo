@@ -37,20 +37,30 @@ class AutoFixUseCase @Inject constructor(
 			return seed to null // no fix required
 		}
 		// Search enabled AND disabled sources, like the original Kotatsu fix did: the
-		// replacement often lives on a source the user never enabled.
-		val replacement = alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Enabled)
-			.concat(alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Disabled))
-			.filter { it.isHealthy() }
-			.runningFold<Manga, Manga?>(null) { best, candidate ->
-				if (best == null || best < candidate) {
-					candidate
-				} else {
-					best
-				}
+		// replacement often lives on a source the user never enabled. A half-dead source
+		// can also leave a placeholder title ("Loading…") in the database, so fall back
+		// to the alternative titles before searching.
+		val query = seed.title.takeUnless { it.contains("loading", ignoreCase = true) }
+			?: seed.altTitle?.takeUnless(String::isBlank)
+			?: seed.originalTitle?.takeUnless(String::isBlank)
+			?: seed.title
+		// Page-level health (pages + page URL) is too strict for sources behind webview
+		// checks; prefer fully healthy candidates but accept any whose details loaded
+		// with chapters - a candidate that turns out dead can be re-fixed later.
+		val acc = alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Enabled, query = query)
+			.concat(alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Disabled, query = query))
+			.filter { it.chapters != null }
+			.runningFold(BestCandidates()) { current, candidate ->
+				val healthy = if (candidate.isHealthy() && (current.healthy == null || current.healthy < candidate)) candidate else current.healthy
+				val any = if (current.any == null || current.any < candidate) candidate else current.any
+				BestCandidates(healthy, any)
 			}.selectLastWithTimeout(4, 40, TimeUnit.SECONDS)
-		migrateUseCase(seed, replacement ?: throw NoAlternativesException(ParcelableManga(seed)))
+		val replacement = acc?.healthy ?: acc?.any ?: throw NoAlternativesException(ParcelableManga(seed))
+		migrateUseCase(seed, replacement)
 		return seed to replacement
 	}
+
+	private data class BestCandidates(val healthy: Manga? = null, val any: Manga? = null)
 
 	private suspend fun Manga.isHealthy(): Boolean = runCatchingCancellable {
 		val repo = mangaRepositoryFactory.create(source)
