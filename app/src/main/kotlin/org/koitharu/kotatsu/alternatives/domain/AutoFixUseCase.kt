@@ -42,23 +42,24 @@ class AutoFixUseCase @Inject constructor(
 		// to the alternative titles before searching.
 		val fallbackQuery: String = seed.altTitles.firstOrNull { it.isNotBlank() } ?: seed.title
 		val query: String = if (seed.title.contains("loading", ignoreCase = true)) fallbackQuery else seed.title
-		// Page-level health (pages + page URL) is too strict for sources behind webview
-		// checks; prefer fully healthy candidates but accept any whose details loaded
-		// with chapters - a candidate that turns out dead can be re-fixed later.
+		// Do NOT hard-require page-level health: sources behind webview/captcha checks
+		// always fail that probe in a background service, and many aggregator sources
+		// ship a working search with a broken details endpoint. Prefer candidates whose
+		// details (chapters) loaded, but fall back to the best-ranked search hit - the
+		// user can re-fix later if the picked source turns out dead too.
 		val acc = alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Enabled, query = query)
 			.concat(alternativesUseCase(seed, sourceScope = AlternativeSourceScope.Disabled, query = query))
-			.filter { it.chapters != null }
 			.runningFold(BestCandidates()) { current, candidate ->
-				val healthy = if (candidate.isHealthy() && (current.healthy == null || current.healthy < candidate)) candidate else current.healthy
-				val any = if (current.any == null || current.any < candidate) candidate else current.any
-				BestCandidates(healthy, any)
+				val withChapters = if (candidate.chapters != null && (current.withChapters == null || current.withChapters < candidate)) candidate else current.withChapters
+				val first = current.first ?: candidate
+				BestCandidates(withChapters, first)
 			}.selectLastWithTimeout(4, 40, TimeUnit.SECONDS)
-		val replacement = acc?.healthy ?: acc?.any ?: throw NoAlternativesException(ParcelableManga(seed))
+		val replacement = acc?.withChapters ?: acc?.first ?: throw NoAlternativesException(ParcelableManga(seed))
 		migrateUseCase(seed, replacement)
 		return seed to replacement
 	}
 
-	private data class BestCandidates(val healthy: Manga? = null, val any: Manga? = null)
+	private data class BestCandidates(val withChapters: Manga? = null, val first: Manga? = null)
 
 	private suspend fun Manga.isHealthy(): Boolean = runCatchingCancellable {
 		val repo = mangaRepositoryFactory.create(source)
