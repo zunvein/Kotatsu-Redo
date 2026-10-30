@@ -891,6 +891,14 @@ Optional — skip it and you appear as anon.</string>
     <string name="fix_report_fixed">Fixed: %1$d</string>
     <string name="fix_report_failed">Failed: %1$d</string>
     <string name="fix_report_skipped">Skipped: %1$d</string>
+    <string name="fix_report_generated_at">Report from %s</string>
+    <string name="fix_status_fixed">Fixed</string>
+    <string name="fix_status_skipped">Skipped</string>
+    <string name="fix_status_failed">Failed</string>
+    <string name="fix_status_error">Error</string>
+    <string name="fix_reason_no_fix_required">Already available on its current source</string>
+    <string name="fix_reason_no_alternatives">No alternative found — searched enabled and disabled sources for the title and its alternative titles</string>
+    <string name="fix_reason_migrated">Migrated to %s</string>
     <string name="content_type_novel">Novel</string>
     <string name="content_type_manhua">Manhua</string>
     <string name="content_type_manhwa">Manhwa</string>

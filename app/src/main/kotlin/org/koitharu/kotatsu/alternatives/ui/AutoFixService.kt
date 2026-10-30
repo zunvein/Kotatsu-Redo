@@ -12,6 +12,8 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.app.PendingIntentCompat
 import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.alternatives.domain.AutoFixUseCase
 import org.koitharu.kotatsu.alternatives.domain.AutoFixUseCase.NoAlternativesException
@@ -81,26 +83,45 @@ class AutoFixService : CoroutineIntentService() {
 	private fun Result<Pair<Manga, Manga?>>.toReportItem(): FixReportItem = fold(
 		onSuccess = { (seed, replacement) ->
 			if (replacement == null) {
-				FixReportItem(seed.title, seed.source.getTitle(this@AutoFixService), FixReportItem.Status.NO_FIX_REQUIRED, "")
+				FixReportItem(
+					seedId = seed.id,
+					title = seed.title,
+					source = seed.source.getTitle(this@AutoFixService),
+					sourceName = seed.source.name,
+					coverUrl = seed.coverUrl,
+					status = FixReportItem.Status.NO_FIX_REQUIRED,
+					detail = getString(R.string.fix_reason_no_fix_required),
+				)
 			} else {
 				FixReportItem(
-					seed.title,
-					seed.source.getTitle(this@AutoFixService),
-					FixReportItem.Status.FIXED,
-					replacement.title + " (" + replacement.source.getTitle(this@AutoFixService) + ")",
+					seedId = seed.id,
+					title = seed.title,
+					source = seed.source.getTitle(this@AutoFixService),
+					sourceName = seed.source.name,
+					coverUrl = seed.coverUrl,
+					status = FixReportItem.Status.FIXED,
+					detail = getString(R.string.fix_reason_migrated, replacement.source.getTitle(this@AutoFixService)),
+					newId = replacement.id,
+					newTitle = replacement.title,
+					newSource = replacement.source.getTitle(this@AutoFixService),
+					newSourceName = replacement.source.name,
+					newCoverUrl = replacement.coverUrl,
 				)
 			}
 		},
 		onFailure = { error ->
 			val seed = (error as? NoAlternativesException)?.seed?.manga
 			val detail = if (error is NoAlternativesException) {
-				getString(R.string.no_alternatives_found, seed?.title ?: "")
+				getString(R.string.fix_reason_no_alternatives)
 			} else {
 				error.getDisplayMessage(resources)
 			}
 			FixReportItem(
+				seedId = seed?.id ?: 0L,
 				title = seed?.title ?: "",
 				source = seed?.source?.getTitle(this@AutoFixService) ?: "",
+				sourceName = seed?.source?.name ?: "",
+				coverUrl = seed?.coverUrl,
 				status = if (error is NoAlternativesException) FixReportItem.Status.NO_ALTERNATIVES else FixReportItem.Status.ERROR,
 				detail = detail,
 			)
@@ -117,13 +138,22 @@ class AutoFixService : CoroutineIntentService() {
 					appendLine()
 					for (item in report) {
 						when (item.status) {
-							FixReportItem.Status.FIXED -> appendLine("FIXED \"${item.title}\" (${item.source}) -> \"${item.detail}\"")
+							FixReportItem.Status.FIXED -> appendLine("FIXED \"${item.title}\" (${item.source}) -> \"${item.newTitle}\" (${item.newSource})")
 							FixReportItem.Status.NO_FIX_REQUIRED -> appendLine("SKIP \"${item.title}\" (${item.source})")
 							FixReportItem.Status.NO_ALTERNATIVES -> appendLine("FAIL \"${item.title}\" (${item.source}) — no alternatives found")
 							FixReportItem.Status.ERROR -> appendLine("FAIL \"${item.title}\" (${item.source}) — ${item.detail}")
 						}
 					}
 				},
+			)
+			// Structured copy for the report screen (covers, tap-through, per-item reasons).
+			File(cacheDir, FixReportActivity.REPORT_JSON_FILE).writeText(
+				Json.encodeToString(
+					FixReportItem.FileDto(
+						stamp = stamp,
+						items = report.map { it.toDto() },
+					),
+				),
 			)
 		}.onFailure { it.printStackTraceDebug() }
 	}
