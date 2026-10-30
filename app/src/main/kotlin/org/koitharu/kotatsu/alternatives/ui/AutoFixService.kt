@@ -18,6 +18,7 @@ import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.alternatives.domain.AutoFixUseCase
 import org.koitharu.kotatsu.alternatives.domain.AutoFixUseCase.NoAlternativesException
 import org.koitharu.kotatsu.core.model.getTitle
+import org.koitharu.kotatsu.core.parser.MangaDataRepository
 import org.koitharu.kotatsu.core.ui.CoroutineIntentService
 import org.koitharu.kotatsu.core.util.ext.checkNotificationPermission
 import org.koitharu.kotatsu.core.util.ext.getDisplayMessage
@@ -39,6 +40,9 @@ class AutoFixService : CoroutineIntentService() {
 	@Inject
 	lateinit var autoFixUseCase: AutoFixUseCase
 
+	@Inject
+	lateinit var mangaDataRepository: MangaDataRepository
+
 	private lateinit var notificationManager: NotificationManagerCompat
 
 	override fun onCreate() {
@@ -55,7 +59,7 @@ class AutoFixService : CoroutineIntentService() {
 				val result = runCatchingCancellable {
 					autoFixUseCase.invoke(mangaId)
 				}
-				report.add(result.toReportItem())
+				report.add(result.toReportItem(mangaId))
 			}
 			// Live k/N progress on the foreground notification instead of an endless spinner.
 			if (checkNotificationPermission(CHANNEL_ID)) {
@@ -80,7 +84,7 @@ class AutoFixService : CoroutineIntentService() {
 		}
 	}
 
-	private fun Result<Pair<Manga, Manga?>>.toReportItem(): FixReportItem = fold(
+	private suspend fun Result<Pair<Manga, Manga?>>.toReportItem(mangaId: Long): FixReportItem = fold(
 		onSuccess = { (seed, replacement) ->
 			if (replacement == null) {
 				FixReportItem(
@@ -110,7 +114,11 @@ class AutoFixService : CoroutineIntentService() {
 			}
 		},
 		onFailure = { error ->
+			// Generic errors lose the seed inside the use case, which used to make the
+			// report row anonymous ("FAIL \"\" ()"). Recover the identity from the stored
+			// manga so every failed row still says what was attempted and where.
 			val seed = (error as? NoAlternativesException)?.seed?.manga
+				?: mangaDataRepository.findMangaById(mangaId, withChapters = false)
 			val detail = if (error is NoAlternativesException) {
 				getString(R.string.fix_reason_no_alternatives)
 			} else {
