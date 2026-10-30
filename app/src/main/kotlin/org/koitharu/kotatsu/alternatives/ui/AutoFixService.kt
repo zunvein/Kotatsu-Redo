@@ -79,7 +79,7 @@ class AutoFixService : CoroutineIntentService() {
 	}
 
 	private fun Result<Pair<Manga, Manga?>>.toReportItem(): FixReportItem = fold(
-		success = { (seed, replacement) ->
+		onSuccess = { (seed, replacement) ->
 			if (replacement == null) {
 				FixReportItem(seed.title, seed.source.getTitle(this@AutoFixService), FixReportItem.Status.NO_FIX_REQUIRED, "")
 			} else {
@@ -91,7 +91,7 @@ class AutoFixService : CoroutineIntentService() {
 				)
 			}
 		},
-		failure = { error ->
+		onFailure = { error ->
 			val seed = (error as? NoAlternativesException)?.seed?.manga
 			val detail = if (error is NoAlternativesException) {
 				getString(R.string.no_alternatives_found, seed?.title ?: "")
