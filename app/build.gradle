@@ -111,6 +111,9 @@ android {
 		nightly {
 			initWith release
 			applicationIdSuffix = '.nightly'
+			// Dependencies like jxl-coder only publish debug/release variants; without
+			// this fallback the nightly runtime classpath cannot resolve at all.
+			matchingFallbacks = ['release']
 			signingConfig signingConfigs.fork
 		}
 	}
