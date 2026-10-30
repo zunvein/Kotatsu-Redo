@@ -1,27 +1,27 @@
-# Kotatsu Redo — fork zunvein
+# Kotatsu Redo — fork by zunvein
 
-Perubahan dibanding app official (upstream Kotatsu-Redo):
+Changes compared to the official app (upstream Kotatsu-Redo):
 
-## Fitur Fix — migrasi otomatis manga sumber mati
+## Fix feature — auto-migrate manga from dead sources
 
-- **Fix massal di Favourites**: pilih banyak manga sekaligus → menu ⋮ → **Fix** — semua dicariin alternatif otomatis, bisa campur source apa pun.
-- Nyari di **semua source**: yang aktif maupun yang nonaktif, tanpa batasan bahasa.
-- Ambil **hasil pencarian teratas** (peringkat komunitas) tanpa ngecek details dulu — source aggregator yang search-nya jalan tapi details-nya rusak tetap ke-hit.
-- **Retry otomatis pakai judul alternatif** kalau judul utama gak ketemu.
-- **Filter NSFW di-bypass** saat auto-fix — manga mati lebih buruk daripada source 18+. Layar alternatif manual tetap ngikutin filter.
-- Budget pencarian: 90 detik judul utama + 30 detik per retry.
-- **Laporan Fix**: notif ringkasan (Fixed X, failed Y, skipped Z) → layar laporan ber-thema app dengan tombol Copy & Share.
-- Notif progres per-manga (k/N).
+- **Batch Fix in Favourites**: select multiple manga at once → ⋮ menu → **Fix** — every entry gets a replacement source automatically, mixed sources in one batch.
+- Searches **all sources** — enabled and disabled, no language gate.
+- Takes the **top-ranked search hit** (community ranking) without probing details first — aggregators with a working search but broken details still get matched.
+- **Automatic retry with alternative titles** when the primary title finds nothing.
+- **NSFW filter is bypassed** during auto-fix — a dead entry is worse than an 18+ source. The manual alternatives screen still follows the filter.
+- Search budget: 90 seconds for the primary title + 30 seconds per retry.
+- **Fix report**: summary notification (Fixed X, failed Y, skipped Z) → themed report screen with Copy & Share buttons.
+- Per-manga progress notification (k/N).
 
-## Update & rilis
+## Updates & releases
 
-- **Update check in-app** dari repo ini sendiri: Settings → About → ketuk versi, atau badge pas app dibuka. Changelog = catatan rilis ini.
-- **APK per-ABI**: `arm64-v8a` (HP modern), `armeabi-v7a` (HP lama), `universal` (jalan di mana aja — dipakai buat update in-app).
-- **Signature tetap** antar build → update-over-update mulus tanpa konflik signature.
-- Bisa **coexist dengan app official Kotatsu** (applicationId beda: `.nightly`).
+- **In-app update check** against this very repo: Settings → About → tap the version, or the badge shown when the app opens. The changelog is these release notes.
+- **Per-ABI APKs**: `arm64-v8a` (modern phones), `armeabi-v7a` (older devices), `universal` (works everywhere — used for in-app updates).
+- **Stable signing key** across builds → updates install cleanly over previous versions.
+- Can be **installed alongside the official Kotatsu app** (different applicationId: `.nightly`).
 
-## Lain-lain
+## Other
 
-- Build minified (R8) — APK jauh lebih kecil daripada build debug.
-- Update check ke repo upstream/official dimatikan total (hemat kuota & privacy).
-- Notif spam StrictMode (disk-write violation) di Android 16 diperbaiki.
+- Minified (R8) build — much smaller than a debug APK.
+- Update checks against upstream/official repositories are fully disabled.
+- Fixed the StrictMode disk-write violation notification spam on Android 16.
