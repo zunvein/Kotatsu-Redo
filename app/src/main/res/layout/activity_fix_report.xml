@@ -1,45 +1,90 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	android:orientation="vertical"
-	android:padding="16dp">
+	android:orientation="vertical">
+
+	<com.google.android.material.appbar.MaterialToolbar
+		android:id="@+id/toolbar"
+		android:layout_width="match_parent"
+		android:layout_height="?attr/actionBarSize"
+		app:title="@string/fix_report" />
 
 	<LinearLayout
+		android:id="@+id/summary_container"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:orientation="horizontal">
-
-		<Button
-			android:id="@+id/buttonCopy"
-			android:layout_width="0dp"
-			android:layout_height="wrap_content"
-			android:layout_marginEnd="8dp"
-			android:layout_weight="1"
-			android:text="@string/fix_report_copy" />
-
-		<Button
-			android:id="@+id/buttonShare"
-			android:layout_width="0dp"
-			android:layout_height="wrap_content"
-			android:layout_marginStart="8dp"
-			android:layout_weight="1"
-			android:text="@string/fix_report_share" />
-	</LinearLayout>
-
-	<ScrollView
-		android:layout_width="match_parent"
-		android:layout_height="0dp"
-		android:layout_marginTop="12dp"
-		android:layout_weight="1">
+		android:orientation="horizontal"
+		android:paddingHorizontal="@dimen/screen_padding"
+		android:paddingTop="2dp"
+		android:paddingBottom="6dp">
 
 		<TextView
-			android:id="@+id/textView"
-			android:layout_width="match_parent"
+			android:id="@+id/textView_fixed"
+			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:fontFamily="monospace"
-			android:textIsSelectable="true"
-			android:textSize="13sp" />
-	</ScrollView>
+			android:textAppearance="?textAppearanceBodyMedium"
+			android:textColor="?colorPrimary"
+			tools:text="Fixed: 53" />
+
+		<TextView
+			android:id="@+id/textView_failed"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="16dp"
+			android:textAppearance="?textAppearanceBodyMedium"
+			android:textColor="?colorError"
+			tools:text="Failed: 15" />
+
+		<TextView
+			android:id="@+id/textView_skipped"
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:layout_marginStart="16dp"
+			android:textAppearance="?textAppearanceBodyMedium"
+			android:textColor="?android:attr/textColorSecondary"
+			tools:text="Skipped: 7" />
+	</LinearLayout>
+
+	<androidx.recyclerview.widget.RecyclerView
+		android:id="@+id/recyclerView"
+		android:layout_width="match_parent"
+		android:layout_height="0dp"
+		android:layout_weight="1"
+		android:clipToPadding="false"
+		android:paddingHorizontal="@dimen/screen_padding"
+		android:paddingBottom="@dimen/screen_padding"
+		app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+		tools:listitem="@layout/item_fix_report" />
+
+	<com.google.android.material.dockedtoolbar.DockedToolbarLayout
+		android:id="@+id/docked_toolbar"
+		android:layout_width="match_parent"
+		android:layout_height="wrap_content"
+		android:fitsSystemWindows="false">
+
+		<FrameLayout
+			android:id="@+id/docked_toolbar_child"
+			android:layout_width="match_parent"
+			android:layout_height="@dimen/m3_comp_toolbar_docked_container_height">
+
+			<Button
+				android:id="@+id/button_copy"
+				style="?materialButtonTonalStyle"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical|start"
+				android:text="@string/fix_report_copy" />
+
+			<Button
+				android:id="@+id/button_share"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:layout_gravity="center_vertical|end"
+				android:text="@string/fix_report_share" />
+		</FrameLayout>
+	</com.google.android.material.dockedtoolbar.DockedToolbarLayout>
 </LinearLayout>

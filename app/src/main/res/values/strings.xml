@@ -888,6 +888,9 @@ Optional — skip it and you appear as anon.</string>
     <string name="fix_report_copied">Report copied</string>
     <string name="fix_report_empty">No report available</string>
     <string name="fix_report_header">Total: %1$d — fixed: %2$d, failed: %3$d, skipped: %4$d</string>
+    <string name="fix_report_fixed">Fixed: %1$d</string>
+    <string name="fix_report_failed">Failed: %1$d</string>
+    <string name="fix_report_skipped">Skipped: %1$d</string>
     <string name="content_type_novel">Novel</string>
     <string name="content_type_manhua">Manhua</string>
     <string name="content_type_manhwa">Manhwa</string>
