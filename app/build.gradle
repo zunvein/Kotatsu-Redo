@@ -124,10 +124,9 @@ android {
 			applicationIdSuffix = '.debug'
 		}
 		release {
-			// R8 ran once per ABI split (3 variants), which pushed the CI build from
-			// ~6 to ~13 minutes while barely shrinking the APK. Keep D8 dexing only.
-			minifyEnabled false
-			shrinkResources false
+			minifyEnabled true
+			shrinkResources true
+			proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 			// Stable release channel: signed with the fork keystore and the CLEAN
 			// applicationId (defaultConfig, no suffix) - the drop-in replacement for
 			// the official app, same name/icon as upstream's own releases.

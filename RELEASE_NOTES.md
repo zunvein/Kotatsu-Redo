@@ -2,12 +2,6 @@
 
 Changes compared to the official app (upstream Kotatsu-Redo):
 
-## 9.9.2 — faster builds
-
-- Release builds no longer run R8 per ABI split (three minification passes were the reason a build
-  took ~13 minutes instead of ~6). APKs are slightly larger, per-ABI splits are unchanged.
-- The nightly channel is manual-only: the daily cron is removed, so nothing runs on a schedule.
-
 ## 9.9.1 — LikeManga works again
 
 - **LikeManga fixed.** The source moved from `likemanga.ink` to `mgread.io` and switched to a new
