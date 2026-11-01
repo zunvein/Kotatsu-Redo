@@ -24,8 +24,17 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build signed nightly APK (minified)
-        run: ./gradlew assembleNightly --no-daemon --stacktrace
+      - name: Build signed nightly APK
+        run: |
+          set -o pipefail
+          ./gradlew assembleNightly --no-daemon --stacktrace 2>&1 | awk '
+            /^WARNING: D8:/ { suppressed++; skip = 1; next }
+            skip && (/^[ \t]/ || /^com\.android\.tools\.r8/) { next }
+            { skip = 0; print }
+            END {
+              if (suppressed) printf "\n[ci] %d D8 Kotlin-metadata warnings suppressed (D8 8.13 vs Kotlin 2.2, harmless)\n", suppressed
+            }
+          '
 
       - name: Upload nightly APK artifact
         uses: actions/upload-artifact@v7

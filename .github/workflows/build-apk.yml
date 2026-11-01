@@ -34,8 +34,20 @@ jobs:
       - name: Set up Gradle (with cache)
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Build signed release APKs (minified, per-ABI + universal)
-        run: ./gradlew assembleRelease -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace
+      - name: Build signed release APKs (per-ABI + universal)
+        run: |
+          set -o pipefail
+          # D8 (R8 8.13) cannot parse Kotlin 2.2 metadata and prints a warning plus a full
+          # stack trace for every class - ~1k warnings, ~160k log lines. Harmless, so the
+          # noise is collapsed into a single counter line.
+          ./gradlew assembleRelease -PforkBuildDate="$FORK_DATE" --no-daemon --stacktrace 2>&1 | awk '
+            /^WARNING: D8:/ { suppressed++; skip = 1; next }
+            skip && (/^[ \t]/ || /^com\.android\.tools\.r8/) { next }
+            { skip = 0; print }
+            END {
+              if (suppressed) printf "\n[ci] %d D8 Kotlin-metadata warnings suppressed (D8 8.13 vs Kotlin 2.2, harmless)\n", suppressed
+            }
+          '
 
       - name: Publish to GitHub Releases
         env:
