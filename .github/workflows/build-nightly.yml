@@ -2,9 +2,6 @@ name: Build nightly APK
 
 on:
   workflow_dispatch:
-  schedule:
-    # Daily at 01:30 WIB (18:30 UTC) - the test channel for upcoming features.
-    - cron: '30 18 * * *'
 
 concurrency:
   group: apk-nightly
