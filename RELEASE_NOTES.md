@@ -2,6 +2,16 @@
 
 Changes compared to the official app (upstream Kotatsu-Redo):
 
+## 9.9.1 — LikeManga works again
+
+- **LikeManga fixed.** The source moved from `likemanga.ink` to `mgread.io` and switched to a new
+  platform, which broke every selector and made the app throw
+  `ParseException: Cannot find "#summary_shortened"`. The parser is ported to the new site:
+  details, chapter list, listing, filters, search — and the chapter reader, which now unlocks the
+  site's encrypted image payload before loading the pages.
+- Existing library entries keep working: manga and chapter URLs use the same
+  `/manga/<slug>/chapter-N/` shape as before, so nothing has to be migrated.
+
 ## Fix feature — auto-migrate manga from dead sources
 
 - **Batch Fix in Favourites**: select multiple manga at once → ⋮ menu → **Fix** — every entry gets a replacement source automatically, mixed sources in one batch.
