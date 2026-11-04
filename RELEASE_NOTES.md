@@ -2,15 +2,22 @@
 
 Changes compared to the official app (upstream Kotatsu-Redo):
 
-## 9.9.1 — LikeManga works again
+## 9.9.3 — synced with upstream 9.8.6
 
-- **LikeManga fixed.** The source moved from `likemanga.ink` to `mgread.io` and switched to a new
-  platform, which broke every selector and made the app throw
-  `ParseException: Cannot find "#summary_shortened"`. The parser is ported to the new site:
-  details, chapter list, listing, filters, search — and the chapter reader, which now unlocks the
-  site's encrypted image payload before loading the pages.
-- Existing library entries keep working: manga and chapter URLs use the same
-  `/manga/<slug>/chapter-N/` shape as before, so nothing has to be migrated.
+- **Everything upstream shipped in 9.8.6 is in this build**: the erase gesture in the reader (rub over
+  an ad or logo and it stays gone, in every chapter and series), the hidden images screen under Reader
+  settings with backup support, the rewritten Explore screen (For You / Top), reorganised settings with
+  a much better search, and the old Explore screen renamed to Sources.
+- **The batch Fix this fork adds is untouched** by the sync — same behaviour as before.
+- **Parser dependency switched to the upstream build.** Upstream has rewritten LikeManga (now MGRead)
+  for the new site itself, so the fork's own parser patch is no longer carried. The practical
+  difference: encrypted chapters on that source open in the site's own reader instead of being
+  decrypted inside the app.
+- One local change: the new hidden images database ships as version 1. Upstream does not keep its
+  Room schema files in git, so its 1 → 7 auto-migration chain cannot be generated from a clean
+  checkout. The database is new in this release, so there is nothing to migrate.
+- Sources removed by upstream (Comix, Kaliscan) are gone; library entries on them show as an unknown
+  source — that is what the Fix feature is for.
 
 ## Fix feature — auto-migrate manga from dead sources
 
@@ -20,7 +27,7 @@ Changes compared to the official app (upstream Kotatsu-Redo):
 - **Automatic retry with alternative titles** when the primary title finds nothing.
 - **NSFW filter is bypassed** during auto-fix — a dead entry is worse than an 18+ source. The manual alternatives screen still follows the filter.
 - Search budget: 90 seconds for the primary title + 30 seconds per retry.
-- **Fix report**: summary notification (Fixed X, failed Y, skipped Z) → themed report screen with Copy & Share buttons.
+- **Fix report**: summary notification (Fixed X, failed Y, skipped Z) → themed report screen with covers, per-item reasons, tap-through to the new entry, Copy & Share buttons.
 - Per-manga progress notification (k/N).
 
 ## Updates & releases
@@ -36,3 +43,9 @@ Changes compared to the official app (upstream Kotatsu-Redo):
 - Minified (R8) build — much smaller than a debug APK.
 - Update checks against upstream/official repositories are fully disabled.
 - Fixed the StrictMode disk-write violation notification spam on Android 16.
+
+### Which APK?
+
+- `arm64-v8a` — almost every phone from the last several years.
+- `armeabi-v7a` — older 32-bit devices.
+- `universal` — if you are not sure, take this one; it also works for the in-app updater.
