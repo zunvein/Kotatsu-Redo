@@ -40,4 +40,10 @@
 		android:summary="@string/url_github"
 		android:title="@string/source_code" />
 
+	<Preference
+		android:icon="@drawable/ic_heart"
+		android:key="sponsor"
+		android:persistent="false"
+		android:title="@string/community_sponsor" />
+
 </PreferenceScreen>
