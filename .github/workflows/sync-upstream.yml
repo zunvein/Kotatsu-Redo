@@ -1,0 +1,190 @@
+name: Sync upstream
+
+# Merges the newest *stable* upstream release into this fork, builds it, and publishes the
+# result as a PRE-RELEASE.
+#
+# Pre-releases are invisible to the in-app updater (it reads /releases/latest), so nothing
+# reaches the stable channel on its own: promote a pre-release by hand when it has been
+# installed and trusted.
+#
+# Deliberate rules:
+#   - a red build publishes nothing and leaves devel untouched;
+#   - conflicts outside the fork's own edits stop the run instead of being guessed at;
+#   - the push back to devel is made with GITHUB_TOKEN, which cannot trigger other
+#     workflows - that is why this single run does the build and the release itself.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Stop before building, publishing and pushing'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Merge, build and publish a pre-release
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      UPSTREAM_REPO: Kotatsu-Redo/Kotatsu-Redo
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Git identity
+        run: |
+          git config user.name 'zunvein'
+          git config user.email '124264948+zunvein@users.noreply.github.com'
+
+      - name: Detect a new upstream release
+        id: detect
+        run: |
+          set -euo pipefail
+          payload="$(gh api "repos/$UPSTREAM_REPO/releases/latest")"
+          tag="$(python3 -c 'import json,sys; print(json.load(sys.stdin)["tag_name"])' <<< "$payload")"
+          pre="$(python3 -c 'import json,sys; print(str(json.load(sys.stdin)["prerelease"]).lower())' <<< "$payload")"
+          synced="$(cat .github/upstream-synced 2>/dev/null || echo none)"
+          echo "upstream: $tag (prerelease=$pre), last synced: $synced"
+          if [ "$tag" = "$synced" ]; then
+            echo "### Already synced with \`$tag\`" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$pre" = "true" ]; then
+            echo "### Upstream marks \`$tag\` as a pre-release - waiting for the stable one" >> "$GITHUB_STEP_SUMMARY"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Merge the upstream release
+        id: merge
+        if: steps.detect.outputs.skip == 'false'
+        run: |
+          set -euo pipefail
+          tag='${{ steps.detect.outputs.tag }}'
+          git remote add upstream "https://github.com/$UPSTREAM_REPO.git" 2>/dev/null || true
+          git fetch --no-tags upstream devel
+          git fetch --tags --force upstream
+          base="$(git rev-parse HEAD)"
+          echo "BASE=$base" >> "$GITHUB_ENV"
+
+          set +e
+          git merge --no-edit "refs/tags/$tag"
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ]; then
+            echo "Merge stopped; trying the fork's known conflict rules."
+            python3 .github/scripts/upstream_sync.py resolve
+            git commit --no-edit
+          fi
+
+          if [ "$(git rev-parse HEAD)" = "$base" ]; then
+            echo "### Nothing to merge - \`$tag\` is already contained in devel" >> "$GITHUB_STEP_SUMMARY"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          python3 .github/scripts/upstream_sync.py room-guard --base "$base"
+          version="$(python3 .github/scripts/upstream_sync.py bump)"
+          echo "$tag" > .github/upstream-synced
+          git add -A
+          git commit \
+            -m "Sync upstream $tag" \
+            -m "Merged $UPSTREAM_REPO@$tag and bumped forkVersion to $version." \
+            -m "Automatic sync: see .github/workflows/sync-upstream.yml."
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "### Synced upstream \`$tag\` as \`$version\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up JDK 17
+        if: steps.merge.outputs.changed == 'true'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle (with cache)
+        if: steps.merge.outputs.changed == 'true'
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Build signed release APKs (per-ABI + universal)
+        if: steps.merge.outputs.changed == 'true'
+        run: |
+          set -o pipefail
+          ./gradlew assembleRelease -PforkBuildDate="$(date -u +%Y%m%d)" --no-daemon --stacktrace 2>&1 | awk '
+            /^WARNING: D8:/ { suppressed++; skip = 1; next }
+            skip && (/^[ \t]/ || /^com\.android\.tools\.r8/) { next }
+            { skip = 0; print }
+            END {
+              if (suppressed) printf "\n[ci] %d D8 Kotlin-metadata warnings suppressed (D8 8.13 vs Kotlin 2.2, harmless)\n", suppressed
+            }
+          '
+
+      - name: Keep the Room schemas (helps future migrations)
+        if: steps.merge.outputs.changed == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: room-schemas
+          path: app/schemas
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Publish the pre-release
+        if: steps.merge.outputs.changed == 'true' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          tag='${{ steps.detect.outputs.tag }}'
+          version='${{ steps.merge.outputs.version }}'
+          [ -n "$version" ] || { echo "no version from the merge step"; exit 1; }
+
+          mkdir -p release-apks
+          for f in app/build/outputs/apk/release/*.apk; do
+            case "$f" in
+              *arm64-v8a*) abi="arm64-v8a" ;;
+              *armeabi-v7a*) abi="armeabi-v7a" ;;
+              *) abi="universal" ;;
+            esac
+            cp "$f" "release-apks/KotatsuRedo-${version}-${abi}.apk"
+          done
+
+          gh api "repos/$UPSTREAM_REPO/releases/tags/$tag" --jq '.body' > upstream-notes.md || true
+          python3 .github/scripts/upstream_sync.py notes \
+            --version "$version" \
+            --tag "$tag" \
+            --notes-file upstream-notes.md > release-notes.md
+
+          ver="v$version"
+          if gh release view "$ver" >/dev/null 2>&1; then
+            gh release delete "$ver" --yes --cleanup-tag
+          fi
+          gh release create "$ver" release-apks/*.apk --title "$version" --notes-file release-notes.md --prerelease
+          echo "### Published pre-release \`$ver\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Push the merge to devel
+        if: steps.merge.outputs.changed == 'true' && inputs.dry_run != true
+        run: |
+          set -euo pipefail
+          git push origin HEAD:devel
+          echo "### devel is now at \`$(git rev-parse --short HEAD)\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Dry run summary
+        if: steps.merge.outputs.changed == 'true' && inputs.dry_run == true
+        run: |
+          git --no-pager log --oneline -3
+          git --no-pager diff --stat "HEAD~1" HEAD || true
+          echo "### Dry run - nothing built, published or pushed" >> "$GITHUB_STEP_SUMMARY"

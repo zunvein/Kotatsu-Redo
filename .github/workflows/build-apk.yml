@@ -6,6 +6,8 @@ on:
     branches: [ devel ]
     paths-ignore:
       - '**.md'
+      # Workflow-only commits (docs, sync plumbing) must not republish a release.
+      - '.github/**'
 
 permissions:
   contents: write

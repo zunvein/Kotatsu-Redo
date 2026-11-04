@@ -30,3 +30,6 @@
 /.idea/AndroidProjectSystem.xml
 /.idea
 /app/release
+
+# python helpers
+__pycache__/
