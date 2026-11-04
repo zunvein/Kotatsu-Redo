@@ -1,7 +1,6 @@
 package org.koitharu.kotatsu.reader.data.erase
 
 import android.content.Context
-import androidx.room.AutoMigration
 import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
@@ -164,17 +163,15 @@ abstract class HiddenImagesDao {
  * Unlike that one this holds what the reader decided rather than something that rebuilds itself, so it has
  * no destructive fallback. A schema change here has to ship a migration.
  */
+// Fork note: this database ships for the first time in 9.8.6, so the 1 -> 7 auto migration chain that
+// upstream accumulated while developing it is collapsed into a single version. Upstream keeps its Room
+// schema JSONs out of git (app/.gitignore has /schemas/), so a clean clone - which is what our CI builds
+// from - cannot generate the auto migrations and KSP fails. Nobody has this database at an older version
+// yet, so there is nothing to migrate. If a schema change is ever needed here, bump the version and export
+// the schema JSON into the repo (git add -f app/schemas) instead of relying on auto migrations.
 @Database(
 	entities = [HiddenImageEntity::class, HiddenPageEntity::class, PageScanEntity::class],
-	version = 7,
-	autoMigrations = [
-		AutoMigration(from = 1, to = 2),
-		AutoMigration(from = 2, to = 3),
-		AutoMigration(from = 3, to = 4),
-		AutoMigration(from = 4, to = 5, spec = ForgetUnreliableMatches::class),
-		AutoMigration(from = 5, to = 6),
-		AutoMigration(from = 6, to = 7),
-	],
+	version = 1,
 )
 abstract class HiddenImagesDatabase : RoomDatabase() {
 	abstract fun getDao(): HiddenImagesDao
