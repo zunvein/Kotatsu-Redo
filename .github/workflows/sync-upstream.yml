@@ -37,6 +37,11 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       UPSTREAM_REPO: Kotatsu-Redo/Kotatsu-Redo
+      # The merge step adds an `upstream` remote, and gh prefers it over `origin`
+      # inside a fork. Without this, `gh release create/view/delete` target
+      # Kotatsu-Redo/Kotatsu-Redo and fail with 403 "Resource not accessible by
+      # integration", which aborts the run before the push to devel.
+      GH_REPO: zunvein/Kotatsu-Redo
     steps:
       - name: Checkout
         uses: actions/checkout@v7
